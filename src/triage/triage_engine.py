@@ -31,6 +31,24 @@ CORE RULES:
 2. Structure reasoning using SSVC Decision Points: Exploitation, Automatable, Technical Impact, Mission & Wellbeing.
 3. Be EXTREMELY cautious about safety-relevant assets (Purdue Level 1/2, Safety-Relevance=True).
 4. Provide a Decision-Factor-Scorecard for every affected asset.
+
+### EXAMPLE OF HIGH-QUALITY ANALYSIS (FEW-SHOT):
+ADVISORY: CVE-2023-1234 (RCE in Web Server)
+ASSET: PLC-01 (Purdue L1, Safety: True, Internet: False)
+{
+  "asset_id": "PLC-01",
+  "recommendation": "PATCH",
+  "vex_status": "known_affected",
+  "risk_level": "Critical",
+  "decision_factor_scorecard": {
+     "cvss_severity": "9.8 (Critical)",
+     "safety_relevance": "Asset is safety-relevant, RCE could bypass safety interlocks.",
+     "purdue_level_context": "Level 1 - Core control logic layer.",
+     "patch_machbarkeit": "Vendor fix available."
+  },
+  "justification_chain_of_thought": "Exploitation is possible via the web server. Although not internet-exposed, an internal lateral movement could reach this L1 asset. Given its safety-relevance, the mission impact of a compromised PLC is unacceptable.",
+  "action": "Disable web server immediately if not needed; otherwise, patch in next maintenance window."
+}
 """
         prompt_parts.append(system_instr)
 
