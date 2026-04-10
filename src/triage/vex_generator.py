@@ -9,18 +9,18 @@ class VEXGenerator:
 
     def generate_vex_report(self, cve: str, analysis_results: List[Dict]) -> Dict:
         """
-        Creates an advanced CSAF/VEX report incorporating SSVC decisions and XAI scorecards.
+        Generates an audit-ready VEX report with deep XAI (Scorecard & SSVC reasoning).
         """
         vex_json = {
             "document": {
                 "category": "csaf_vex",
                 "publisher": {
                     "category": "other",
-                    "name": "LAT-OT Triage System (SSVC-Powered)"
+                    "name": "LAT-OT XAI-Triage System"
                 },
-                "title": f"VEX for {cve} - Local Asset Triage",
+                "title": f"Audit-Ready VEX for {cve}",
                 "tracking": {
-                    "id": f"VEX-LAT-{self.advisory_id}",
+                    "id": f"VEX-XAI-{self.advisory_id}",
                     "status": "final",
                     "version": "1.0",
                     "initial_release_date": self.timestamp,
@@ -35,55 +35,69 @@ class VEXGenerator:
                         "not_affected": [],
                         "under_investigation": []
                     },
-                    "threats": []
+                    "threats": [],
+                    "notes": []
                 }
             ]
         }
 
         for result in analysis_results:
-            status = result.get('vex_status', 'under_investigation')
             asset_id = result.get('asset_id')
+            status = result.get('vex_status', 'under_investigation')
             
-            # Mapping status
+            # 1. Product Status
             if status in vex_json["vulnerabilities"][0]["product_status"]:
                 vex_json["vulnerabilities"][0]["product_status"][status].append(asset_id)
             
-            # Detailed threat analysis (The Decision-Factor-Scorecard)
-            scorecard = result.get('decision_factor_scorecard', {})
-            scorecard_text = " | ".join([f"{k}: {v}" for k, v in scorecard.items()])
+            # 2. SSVC Decision Points as Metadata
+            ssvc = result.get('ssvc_decision_points', {})
+            ssvc_text = ", ".join([f"{k}: {v}" for k, v in ssvc.items()])
+            
+            # 3. Decision Scorecard as Impact Statement
+            scorecard = result.get('decision_factor_scorecard', [])
+            scorecard_formatted = "\n".join([
+                f"- {f.get('factor')}: {f.get('value')} (Influence: {f.get('influence')}, Weight: {f.get('weight')}) - {f.get('note')}"
+                for f in scorecard
+            ])
+
+            # Combine into a formal Threat Note
+            impact_details = (
+                f"Asset: {asset_id}\n"
+                f"Recommendation: {result.get('recommendation')} (Risk: {result.get('risk_level')})\n"
+                f"SSVC Profile: {ssvc_text}\n"
+                f"Decision Scorecard:\n{scorecard_formatted}\n"
+                f"Justification: {result.get('justification_chain_of_thought')}\n"
+                f"Recommended Action: {result.get('action')}"
+            )
             
             vex_json["vulnerabilities"][0]["threats"].append({
                 "category": "impact_statement",
-                "details": (
-                    f"Asset {asset_id} Recommendation: {result.get('recommendation')} ({result.get('risk_level')}). "
-                    f"Justification: {result.get('justification_chain_of_thought')}. "
-                    f"Scorecard: {scorecard_text}. "
-                    f"Action: {result.get('action')}"
-                ),
+                "details": impact_details,
                 "product_ids": [asset_id]
             })
 
         return vex_json
 
 if __name__ == "__main__":
-    # Test with mockup data mirroring the new engine output
+    # Simulate high-precision result
     sample_analysis = [
         {
-            "asset_id": "PLC-PROD-01",
-            "recommendation": "PATCH",
-            "vex_status": "known_affected",
-            "risk_level": "High",
-            "decision_factor_scorecard": {
-               "cvss_severity": "9.8 (Critical)",
-               "safety_relevance": "High (Purdue Level 1)",
-               "purdue_level_context": "Deeply integrated in production cell",
-               "patch_machbarkeit": "Firmware v2.9.4 available"
-            },
-            "justification_chain_of_thought": "Firmware v2.9.2 is below the required v2.9.4. Vulnerability allows RCE.",
-            "action": "Immediate update in next maintenance slot."
+          "asset_id": "PLC-01",
+          "recommendation": "PATCH",
+          "vex_status": "known_affected",
+          "risk_level": "Critical",
+          "ssvc_decision_points": {
+            "exploitation": "Active exploitation",
+            "automatable": "Yes",
+            "technical_impact": "Total",
+            "mission_impact": "Critical"
+          },
+          "decision_factor_scorecard": [
+            {"factor": "Safety", "value": "TRUE", "influence": "Positive", "weight": "High", "note": "Safety PLC requires highest protection."}
+          ],
+          "justification_chain_of_thought": "Reasoning steps...",
+          "action": "Patch now."
         }
     ]
-    
-    gen = VEXGenerator("LAT-OT-2026-001")
-    report = gen.generate_vex_report("CVE-2026-9999", sample_analysis)
-    print(json.dumps(report, indent=2))
+    gen = VEXGenerator("SSA-123456")
+    print(json.dumps(gen.generate_vex_report("CVE-2024-001", sample_analysis), indent=2))

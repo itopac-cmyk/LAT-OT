@@ -20,38 +20,56 @@ class TriageEngine:
         return matched
 
     def generate_ssvc_prompt(self) -> str:
-        """Advanced SSVC-based prompt with high-precision Decision-Factor-Scorecard (XAI)."""
+        """
+        Deep XAI Triage Engine.
+        Implements a multi-dimensional OT risk rubric for verifiable reasoning.
+        """
         prompt_parts = []
         
-        system_instr = """SYSTEM: You are an OT Security Analyst specializing in Critical Infrastructure.
-Your task is to triage security advisories using the SSVC (Stakeholder-Specific Vulnerability Categorization) framework.
+        system_instr = """SYSTEM: You are a Lead OT Security Architect for Critical Infrastructure.
+Your task is to triage security advisories using a high-precision, audit-ready version of the SSVC framework.
 
-CORE RULES:
-1. Base analysis ONLY on provided Advisory Data and Asset Context.
-2. Structure reasoning using SSVC Decision Points: Exploitation, Automatable, Technical Impact, Mission & Wellbeing.
-3. Be EXTREMELY cautious about safety-relevant assets (Purdue Level 1/2, Safety-Relevance=True).
-4. For the Decision-Factor-Scorecard, explicitly state how each factor moved the decision (e.g., 'Safety: +2 Priority').
+### OT-RISK SCORING RUBRIC (XAI):
+For every decision factor, use the following evidence levels:
+1. EXPLOITATION: [None | POC available | Active exploitation in the wild]
+2. AUTOMATABLE: [No | Partial (requires user action) | Yes (Wormable/Scriptable)]
+3. TECHNICAL IMPACT: [None | Partial (DoS/Config change) | Total (RCE/Device Takeover)]
+4. MISSION IMPACT: [None | Minimal (Monitoring lost) | Critical (Physical safety or production loss)]
 
-### EXAMPLE OF HIGH-QUALITY ANALYSIS (FEW-SHOT):
-ADVISORY: CVE-2023-1234 (RCE in Web Server)
-ASSET: PLC-01 (Purdue L1, Safety: True, Internet: False)
+### CORE REASONING MANDATE:
+- You MUST provide a 'Decision-Factor-Scorecard'.
+- For every factor (Safety, Purdue Level, Reachability), you must state the 'Influence' [Positive | Negative | Neutral] and a 'Weight' [Low | Medium | High].
+- Hallucination Check: If the Advisory does not mention a specific protocol (e.g. MQTT), do NOT assume it is vulnerable.
+"""
+        prompt_parts.append(system_instr)
+
+        # Few-Shot Example for high-precision XAI
+        few_shot = """
+### EXAMPLE OF AUDIT-READY ANALYSIS:
+ADVISORY: CVE-2024-9999 (RCE in Siemens Web Server)
+ASSET: PLC-PROD-01 (S7-1500, Purdue L1, Safety: True)
 {
-  "asset_id": "PLC-01",
+  "asset_id": "PLC-PROD-01",
   "recommendation": "PATCH",
   "vex_status": "known_affected",
   "risk_level": "Critical",
-  "decision_factor_scorecard": {
-     "cvss_severity": "9.8 (Critical) - High initial priority.",
-     "safety_relevance": "TRUE - Crucial factor: Any RCE in a safety PLC is an automatic Critical/Patch recommendation.",
-     "purdue_level_context": "Level 1 - Core control layer. Direct access to physical processes.",
-     "internet_exposure": "False - Lowers immediate threat from outside, but internal lateral movement still high risk.",
-     "patch_machbarkeit": "High - Vendor fix available. No known downtime constraints provided."
+  "ssvc_decision_points": {
+    "exploitation": "Active exploitation in the wild (+1 Risk)",
+    "automatable": "Yes (+1 Risk)",
+    "technical_impact": "Total - RCE (+1 Risk)",
+    "mission_impact": "Critical - Safety-Relevant PLC (+1 Risk)"
   },
-  "justification_chain_of_thought": "Exploitation is possible via the web server. Although not internet-exposed, an internal lateral movement could reach this L1 asset. Given its safety-relevance, the mission impact of a compromised PLC is unacceptable. We prioritize patching over mitigation due to the high severity.",
-  "action": "Disable web server immediately if not needed; otherwise, patch in next maintenance window."
+  "decision_factor_scorecard": [
+    {"factor": "Safety Relevance", "value": "TRUE", "influence": "Critical Positive", "weight": "Highest", "note": "Impact on human safety interlocks mandates immediate action."},
+    {"factor": "Purdue Level", "value": "Level 1", "influence": "Positive", "weight": "High", "note": "Direct physical process control layer increases impact severity."},
+    {"factor": "Internet Exposure", "value": "FALSE", "influence": "Negative", "weight": "Medium", "note": "Air-gap lowers external risk but internal lateral movement is not mitigated."},
+    {"factor": "Patch Availability", "value": "v2.9.4 Available", "influence": "Negative", "weight": "High", "note": "Existing fix reduces residual risk once applied."}
+  ],
+  "justification_chain_of_thought": "Starting with Technical Impact: RCE on a Level 1 PLC. Considering Mission Impact: Asset is safety-relevant, so RCE equals potential safety bypass. Cross-referencing Exploitation: Wild exploits reported. Conclusion: Even without internet exposure, the combined weight of Safety and Purdue Level 1 dictates a PATCH recommendation within 24h.",
+  "action": "Isolate Cell 1 network and schedule patch during next shift change."
 }
 """
-        prompt_parts.append(system_instr)
+        prompt_parts.append(few_shot)
 
         for vuln in self.vulnerabilities:
             affected_cpes = vuln.get('affected_products', [])
@@ -60,52 +78,22 @@ ASSET: PLC-01 (Purdue L1, Safety: True, Internet: False)
             if not matched_assets:
                 continue
 
-            # ADVISORY DATA
             cvss = vuln.get('cvss_v3', {})
-            vuln_context = f"\n### ADVISORY: {vuln.get('cve')} - {vuln.get('title')}\n"
-            vuln_context += f"Technical Description: {vuln.get('description')}\n"
+            vuln_context = f"\n### CURRENT ADVISORY: {vuln.get('cve')} - {vuln.get('title')}\n"
+            vuln_context += f"Description: {vuln.get('description')}\n"
             vuln_context += f"CVSS v3: {cvss.get('baseScore', 'N/A')} ({cvss.get('baseSeverity', 'N/A')}) | Vector: {cvss.get('vectorString', 'N/A')}\n"
-            vuln_context += f"Remediation: {vuln.get('remediations')[0].get('details') if vuln.get('remediations') else 'No remediation data'}\n"
+            vuln_context += f"Vendor Remediations: {json.dumps(vuln.get('remediations', []), indent=2)}\n"
             prompt_parts.append(vuln_context)
 
-            # ASSET CONTEXT
-            asset_context = "\n### ASSETS POTENTIALLY AFFECTED:\n"
+            asset_context = "\n### LOCAL ASSET CONTEXT:\n"
             for asset in matched_assets:
                 asset_context += f"- Asset ID: {asset['asset_id']} ({asset['name']})\n"
-                asset_context += f"  Purdue Level: {asset.get('purdue_level')} | Safety-Relevant: {asset.get('safety_relevant')}\n"
-                asset_context += f"  Internet Exposed: {asset.get('internet_exposed')} | Target SL (IEC 62443): {asset.get('iec62443_sl_target')}\n"
-                asset_context += f"  Current Firmware: {asset.get('firmware')}\n"
+                asset_context += f"  Purdue: {asset.get('purdue_level')} | Safety-Rel: {asset.get('safety_relevant')}\n"
+                asset_context += f"  Internet: {asset.get('internet_exposed')} | Criticality: {asset.get('criticality')}\n"
+                asset_context += f"  IEC 62443 Target SL: {asset.get('iec62443_sl_target')} | FW: {asset.get('firmware')}\n"
             prompt_parts.append(asset_context)
 
-            # TASK & OUTPUT FORMAT (XAI focused)
-            task_request = """
-### ANALYSIS TASK:
-For each asset, determine the final recommendation (PATCH / MITIGATE / ACCEPT) by reasoning through:
-1. EXPLOITATION (Is there active exploit code? Is the asset reachable?)
-2. AUTOMATABLE (Can an attacker automate the exploitation at scale?)
-3. TECHNICAL IMPACT (Does it affect Integrity, Availability, or Safety?)
-4. MISSION & WELLBEING (Impact on plant operation and human safety?)
-
-### EXPECTED OUTPUT (JSON ONLY):
-[
-  {
-    "asset_id": "ASSET-ID",
-    "recommendation": "PATCH | MITIGATE | ACCEPT",
-    "vex_status": "known_affected | not_affected | under_investigation",
-    "risk_level": "Low | Medium | High | Critical",
-    "decision_factor_scorecard": {
-       "cvss_severity": "Analysis of CVSS score and vector impact",
-       "safety_relevance": "Quantify how safety context influenced the result",
-       "purdue_level_context": "Impact of network location/Purdue layer",
-       "internet_exposure": "Impact of reachability context",
-       "patch_machbarkeit": "Evaluation of remediation feasibility"
-    },
-    "justification_chain_of_thought": "Step-by-step reasoning citing advisory data",
-    "action": "Immediate tactical step for plant operator"
-  }
-]
-"""
-            prompt_parts.append(task_request)
+            prompt_parts.append("\n### TASK: Perform the audit-ready triage as shown in the example and return valid JSON.")
 
         return "".join(prompt_parts)
 
