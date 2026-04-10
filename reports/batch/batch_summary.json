@@ -1,4 +1,35 @@
 {
-  "timestamp": "2026-04-10T17:48:22.998013",
-  "results": []
+  "timestamp": "2026-04-10T17:48:46.779697",
+  "results": [
+    {
+      "pair": "icsa-24-046-01.json_vs_manufacturing.csv",
+      "status": "error",
+      "error": "Extra data: line 1 column 4 (char 3)"
+    },
+    {
+      "pair": "icsa-24-046-01.json_vs_water_treatment.csv",
+      "status": "error",
+      "error": "Extra data: line 1 column 4 (char 3)"
+    },
+    {
+      "pair": "icsa-24-046-01.json_vs_energy_substation.csv",
+      "status": "error",
+      "error": "Extra data: line 1 column 4 (char 3)"
+    },
+    {
+      "pair": "icsa-24-051-01.json_vs_manufacturing.csv",
+      "status": "error",
+      "error": "Extra data: line 1 column 4 (char 3)"
+    },
+    {
+      "pair": "icsa-24-051-01.json_vs_water_treatment.csv",
+      "status": "error",
+      "error": "Extra data: line 1 column 4 (char 3)"
+    },
+    {
+      "pair": "icsa-24-051-01.json_vs_energy_substation.csv",
+      "status": "error",
+      "error": "Extra data: line 1 column 4 (char 3)"
+    }
+  ]
 }
