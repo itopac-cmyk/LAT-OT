@@ -87,4 +87,3 @@ if __name__ == "__main__":
     gen = VEXGenerator("LAT-OT-2026-001")
     report = gen.generate_vex_report("CVE-2026-9999", sample_analysis)
     print(json.dumps(report, indent=2))
-EOF
