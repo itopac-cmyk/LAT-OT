@@ -15,24 +15,22 @@ class TriageEngine:
         """Correlates affected CPEs with the local asset inventory."""
         matched = []
         for asset in self.assets:
-            # Simple exact match (can be improved with prefix/wildcard matching)
             if asset.get('cpe') in affected_cpes:
                 matched.append(asset)
         return matched
 
-    def generate_claude_prompt(self) -> str:
-        """Constructs a high-precision prompt for Claude Max/Sonnet."""
+    def generate_ssvc_prompt(self) -> str:
+        """Generates a high-precision prompt based on the SSVC decision points from the Exposé."""
         prompt_parts = []
         
-        # System Instructions (to minimize hallucinations)
-        system_instr = """SYSTEM: You are an OT Security Analyst specializing in Critical Infrastructure.
-Your task is to triage security advisories against a specific asset inventory.
-RULES:
-1. Base your assessment ONLY on the provided Advisory Data and Asset Context.
-2. If the data is insufficient to determine impact, state "UNKNOWN" and explain why.
-3. Use a Chain-of-Thought approach: reason step-by-step before giving the final rating.
-4. Cite specific fields from the Advisory Data for your findings.
-5. Provide a VEX-style status (e.g., 'known_affected', 'not_affected', 'under_investigation').
+        system_instr = """SYSTEM: You are an OT Security Analyst for Critical Infrastructure.
+Your task is to triage security advisories using the SSVC (Stakeholder-Specific Vulnerability Categorization) framework.
+
+CORE RULES:
+1. Base analysis ONLY on provided Advisory Data and Asset Context.
+2. Structure reasoning using SSVC Decision Points: Exploitation, Automatable, Technical Impact, Mission & Wellbeing.
+3. Be EXTREMELY cautious about safety-relevant assets (Purdue Level 1/2, Safety-Relevance=True).
+4. Provide a Decision-Factor-Scorecard for every affected asset.
 """
         prompt_parts.append(system_instr)
 
@@ -43,64 +41,67 @@ RULES:
             if not matched_assets:
                 continue
 
-            # Section: Advisory Data
-            vuln_context = f"\n### ADVISORY DATA: {vuln.get('cve')} - {vuln.get('title')}\n"
-            vuln_context += f"Description: {vuln.get('description')}\n"
-            vuln_context += f"Recommended Fix: {vuln.get('remediations')[0].get('details') if vuln.get('remediations') else 'None provided'}\n"
+            # ADVISORY DATA
+            vuln_context = f"\n### ADVISORY: {vuln.get('cve')} - {vuln.get('title')}\n"
+            vuln_context += f"Technical Description: {vuln.get('description')}\n"
+            vuln_context += f"Remediation: {vuln.get('remediations')[0].get('details') if vuln.get('remediations') else 'No remediation data'}\n"
             prompt_parts.append(vuln_context)
 
-            # Section: Asset Context
-            asset_context = "\n### ASSET CONTEXT (Potentially Affected Assets):\n"
+            # ASSET CONTEXT
+            asset_context = "\n### ASSETS POTENTIALLY AFFECTED:\n"
             for asset in matched_assets:
                 asset_context += f"- Asset ID: {asset['asset_id']} ({asset['name']})\n"
-                asset_context += f"  CPE: {asset['cpe']}\n"
-                asset_context += f"  Firmware: {asset['firmware']}\n"
-                asset_context += f"  Exposed to Internet: {asset['is_exposed_to_internet']}\n"
-                asset_context += f"  Criticality: {asset['criticality']}\n"
+                asset_context += f"  Purdue Level: {asset.get('purdue_level')} | Safety-Relevant: {asset.get('safety_relevant')}\n"
+                asset_context += f"  Internet Exposed: {asset.get('internet_exposed')} | Target SL (IEC 62443): {asset.get('iec62443_sl_target')}\n"
+                asset_context += f"  Current Firmware: {asset.get('firmware')}\n"
             prompt_parts.append(asset_context)
 
-            # Section: Analysis Request
-            analysis_request = """
-### TASK:
-1. Determine if the assets are actually affected based on the description and firmware.
-2. Evaluate the operational risk (considering Internet exposure and criticality).
-3. Recommend an immediate action for the plant operator.
-4. Provide the final VEX Status and Risk Level (Low/Medium/High/Critical).
+            # TASK & OUTPUT FORMAT (XAI focused)
+            task_request = """
+### ANALYSIS TASK:
+For each asset, determine the final recommendation (PATCH / MITIGATE / ACCEPT) by reasoning through:
+1. EXPLOITATION (Is there active exploit code? Is the asset reachable?)
+2. AUTOMATABLE (Can an attacker automate the exploitation at scale?)
+3. TECHNICAL IMPACT (Does it affect Integrity, Availability, or Safety?)
+4. MISSION & WELLBEING (Impact on plant operation and human safety?)
 
-### OUTPUT FORMAT (IMPORTANT):
-Return your final assessment in the following JSON format:
+### EXPECTED OUTPUT (JSON ONLY):
 [
   {
     "asset_id": "ASSET-ID",
+    "recommendation": "PATCH | MITIGATE | ACCEPT",
     "vex_status": "known_affected | not_affected | under_investigation",
     "risk_level": "Low | Medium | High | Critical",
-    "justification": "Detailed reasoning here",
-    "action": "Recommended action here"
+    "decision_factor_scorecard": {
+       "cvss_severity": "Score/Impact",
+       "safety_relevance": "How it influenced the decision",
+       "purdue_level_context": "Impact of network segment",
+       "patch_machbarkeit": "Is a patch available and applicable?"
+    },
+    "justification_chain_of_thought": "Step-by-step reasoning citing advisory data",
+    "action": "Immediate tactical step for plant operator"
   }
 ]
 """
-            prompt_parts.append(analysis_request)
+            prompt_parts.append(task_request)
 
         return "".join(prompt_parts)
 
 if __name__ == "__main__":
-    # Test with previous components
+    import os
     from src.parser.csaf_parser import CSAFParser
-    
-    # Load Sample Advisory
+    from src.utils.asset_loader import AssetLoader
+
+    # Test Run
     with open("data/examples/sample_advisory.json", 'r') as f:
         advisory_data = json.load(f)
     
-    # Load Sample Assets
-    with open("data/examples/assets.json", 'r') as f:
-        asset_data = json.load(f)
+    loader = AssetLoader()
+    asset_data = loader.load_from_csv("data/examples/assets.csv")
 
-    # Parse & Engine Run
     parser = CSAFParser(advisory_data)
     vulns = parser.extract_vulnerabilities()
     
     engine = TriageEngine(vulns, asset_data)
-    final_prompt = engine.generate_claude_prompt()
-    
-    print("-" * 30 + " GENERATED CLAUDE PROMPT " + "-" * 30)
-    print(final_prompt)
+    print(engine.generate_ssvc_prompt())
+EOF
