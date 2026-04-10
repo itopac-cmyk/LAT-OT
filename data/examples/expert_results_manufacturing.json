@@ -1,0 +1,12 @@
+[
+  {
+    "asset_id": "PLC-PROD-01",
+    "recommendation": "PATCH",
+    "justification": "Expert agrees with critical RCE rating for safety-relevant L1 PLC."
+  },
+  {
+    "asset_id": "IED-PROT-01",
+    "recommendation": "PATCH",
+    "justification": "Critical protection relay, bypass is unacceptable."
+  }
+]

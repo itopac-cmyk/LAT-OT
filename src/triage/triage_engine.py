@@ -20,17 +20,17 @@ class TriageEngine:
         return matched
 
     def generate_ssvc_prompt(self) -> str:
-        """Generates a high-precision prompt based on the SSVC decision points from the Exposé."""
+        """Advanced SSVC-based prompt with high-precision Decision-Factor-Scorecard (XAI)."""
         prompt_parts = []
         
-        system_instr = """SYSTEM: You are an OT Security Analyst for Critical Infrastructure.
+        system_instr = """SYSTEM: You are an OT Security Analyst specializing in Critical Infrastructure.
 Your task is to triage security advisories using the SSVC (Stakeholder-Specific Vulnerability Categorization) framework.
 
 CORE RULES:
 1. Base analysis ONLY on provided Advisory Data and Asset Context.
 2. Structure reasoning using SSVC Decision Points: Exploitation, Automatable, Technical Impact, Mission & Wellbeing.
 3. Be EXTREMELY cautious about safety-relevant assets (Purdue Level 1/2, Safety-Relevance=True).
-4. Provide a Decision-Factor-Scorecard for every affected asset.
+4. For the Decision-Factor-Scorecard, explicitly state how each factor moved the decision (e.g., 'Safety: +2 Priority').
 
 ### EXAMPLE OF HIGH-QUALITY ANALYSIS (FEW-SHOT):
 ADVISORY: CVE-2023-1234 (RCE in Web Server)
@@ -41,12 +41,13 @@ ASSET: PLC-01 (Purdue L1, Safety: True, Internet: False)
   "vex_status": "known_affected",
   "risk_level": "Critical",
   "decision_factor_scorecard": {
-     "cvss_severity": "9.8 (Critical)",
-     "safety_relevance": "Asset is safety-relevant, RCE could bypass safety interlocks.",
-     "purdue_level_context": "Level 1 - Core control logic layer.",
-     "patch_machbarkeit": "Vendor fix available."
+     "cvss_severity": "9.8 (Critical) - High initial priority.",
+     "safety_relevance": "TRUE - Crucial factor: Any RCE in a safety PLC is an automatic Critical/Patch recommendation.",
+     "purdue_level_context": "Level 1 - Core control layer. Direct access to physical processes.",
+     "internet_exposure": "False - Lowers immediate threat from outside, but internal lateral movement still high risk.",
+     "patch_machbarkeit": "High - Vendor fix available. No known downtime constraints provided."
   },
-  "justification_chain_of_thought": "Exploitation is possible via the web server. Although not internet-exposed, an internal lateral movement could reach this L1 asset. Given its safety-relevance, the mission impact of a compromised PLC is unacceptable.",
+  "justification_chain_of_thought": "Exploitation is possible via the web server. Although not internet-exposed, an internal lateral movement could reach this L1 asset. Given its safety-relevance, the mission impact of a compromised PLC is unacceptable. We prioritize patching over mitigation due to the high severity.",
   "action": "Disable web server immediately if not needed; otherwise, patch in next maintenance window."
 }
 """
@@ -60,8 +61,10 @@ ASSET: PLC-01 (Purdue L1, Safety: True, Internet: False)
                 continue
 
             # ADVISORY DATA
+            cvss = vuln.get('cvss_v3', {})
             vuln_context = f"\n### ADVISORY: {vuln.get('cve')} - {vuln.get('title')}\n"
             vuln_context += f"Technical Description: {vuln.get('description')}\n"
+            vuln_context += f"CVSS v3: {cvss.get('baseScore', 'N/A')} ({cvss.get('baseSeverity', 'N/A')}) | Vector: {cvss.get('vectorString', 'N/A')}\n"
             vuln_context += f"Remediation: {vuln.get('remediations')[0].get('details') if vuln.get('remediations') else 'No remediation data'}\n"
             prompt_parts.append(vuln_context)
 
@@ -91,10 +94,11 @@ For each asset, determine the final recommendation (PATCH / MITIGATE / ACCEPT) b
     "vex_status": "known_affected | not_affected | under_investigation",
     "risk_level": "Low | Medium | High | Critical",
     "decision_factor_scorecard": {
-       "cvss_severity": "Score/Impact",
-       "safety_relevance": "How it influenced the decision",
-       "purdue_level_context": "Impact of network segment",
-       "patch_machbarkeit": "Is a patch available and applicable?"
+       "cvss_severity": "Analysis of CVSS score and vector impact",
+       "safety_relevance": "Quantify how safety context influenced the result",
+       "purdue_level_context": "Impact of network location/Purdue layer",
+       "internet_exposure": "Impact of reachability context",
+       "patch_machbarkeit": "Evaluation of remediation feasibility"
     },
     "justification_chain_of_thought": "Step-by-step reasoning citing advisory data",
     "action": "Immediate tactical step for plant operator"
@@ -111,14 +115,15 @@ if __name__ == "__main__":
     from src.utils.asset_loader import AssetLoader
 
     # Test Run
-    with open("data/examples/sample_advisory.json", 'r') as f:
+    with open("data/raw/siemens/ssa-285644.json", 'r') as f:
         advisory_data = json.load(f)
     
     loader = AssetLoader()
-    asset_data = loader.load_from_csv("data/examples/assets.csv")
+    asset_data = loader.load_from_csv("data/inventories/manufacturing.csv")
 
     parser = CSAFParser(advisory_data)
     vulns = parser.extract_vulnerabilities()
     
     engine = TriageEngine(vulns, asset_data)
     print(engine.generate_ssvc_prompt())
+EOF
