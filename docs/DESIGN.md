@@ -1,39 +1,37 @@
-# LAT-OT Architecture & Design
+# LAT-OT Architecture & XAI Design Deep-Dive
 
-## Overview
-LAT-OT (LLM-powered Advisory Triage for OT-Security) is a framework designed to automate the triage of security advisories in industrial environments. It leverages Large Language Models (LLMs) to bridge the gap between structured vulnerability data (CSAF/VEX) and operational asset context.
+## 1. Context-Aware Ingestion
+LAT-OT does not just "read" advisories; it contextually maps them. 
+*   **CSAF Parsing:** We extract not only CVSS scores but also vendor-specific remediation metadata and product trees to build a highly granular view of the threat.
+*   **Inventory Mapping:** Assets are enriched with metadata based on the **Purdue Reference Model** and **ISA/IEC 62443 Security Levels**.
 
-## System Architecture
+## 2. The XAI Scoring Rubric
+To prevent LLM "Black Box" reasoning, LAT-OT employs a forced-reasoning rubric in its prompting strategy.
 
-### 1. Data Ingestion Layer
-*   **CSAF Parser:** Consumes machine-readable security advisories (JSON). It strips unnecessary metadata and focuses on affected products (CPEs), vulnerability descriptions, and remediation steps.
-*   **Asset Loader:** Imports local asset inventories from CSV or JSON. It captures critical OT context: firmware versions, network location, internet exposure, and operational criticality.
+### SSVC Decision Points
+We use the **Stakeholder-Specific Vulnerability Categorization (SSVC)** model to guide the LLM's logic:
+*   **Exploitation:** Grounded in real-world evidence.
+*   **Automatable:** Analyzing if the threat is scriptable/wormable.
+*   **Technical Impact:** Evaluating impact on the CIA triad for the specific device.
+*   **Mission & Wellbeing:** Determining the impact on production and human life.
 
-### 2. Correlation & Triage Engine
-*   **CPE Matcher:** Performs initial filtering by correlating advisory-affected products with the local asset inventory.
-*   **Prompt Synthesizer:** Orchestrates the context for the LLM. It combines the extracted vulnerability data with the specific matched asset context into a high-precision prompt.
-*   **LLM Analysis (Claude Max/Sonnet):** Performs the "Reasoning" step. It evaluates if a vulnerability is exploitable in the specific OT environment (e.g., "Is the web server active?", "Is the firmware version truly vulnerable?").
+### The Decision-Factor-Scorecard
+The LLM is required to generate a structured JSON object containing:
+1.  **Factor:** (e.g., Safety Relevance)
+2.  **Value:** (e.g., TRUE)
+3.  **Influence:** (Positive | Negative | Neutral)
+4.  **Weight:** (Low | Medium | High | Critical)
+5.  **Note:** Audit-ready reasoning text.
 
-### 3. Reporting & Feedback Layer
-*   **VEX Generator:** Transforms the LLM's natural language reasoning back into a machine-readable **VEX (Vulnerability Exploitability eXchange)** format.
-*   **Operator Briefing:** Generates concise, actionable summaries for plant technicians who may not be security experts.
+## 3. VEX Output Integration
+The result of the LLM analysis is mapped back to the **Vulnerability Exploitability eXchange (VEX)** standard. This ensures that the AI-driven triage is not an isolated report but an active participant in a machine-readable security ecosystem.
 
-## Data Flow Diagram
-```mermaid
-graph TD
-    A[CSAF Advisory] -->|Parse| B(Vulnerability Context)
-    C[Asset Inventory] -->|Load| D(Operational Context)
-    B --> E{Triage Engine}
-    D --> E
-    E -->|Structured Prompt| F[Claude Max/Sonnet]
-    F -->|Analysis| G{VEX Generator}
-    G -->|JSON| H[VEX Report]
-    G -->|Text| I[Operator Briefing]
-```
+## 4. Evaluation Methodology
+To scientifically validate the triage quality, LAT-OT uses:
+*   **Cohen's Kappa (κ):** To measure inter-rater reliability between the LLM and the Expert Panel.
+*   **Precision & Recall:** Focused specifically on the "PATCH" recommendation to minimize false negatives in critical infrastructure.
+*   **Decision-Factor Scorecard Validation:** Evaluating not just the final choice, but the correctness of the individual factors that led to it.
 
-## Anti-Hallucination Strategy
-To ensure safety in critical infrastructure, LAT-OT employs:
-1.  **Grounded Context:** The LLM is strictly limited to the provided advisory and asset data.
-2.  **Chain-of-Thought:** The model must externalize its reasoning steps before providing a risk rating.
-3.  **Source Attribution:** The system requires the LLM to cite specific fields (e.g., "CVE Description", "Asset Firmware") for every conclusion.
-4.  **Structured Output:** Using JSON schemas for LLM responses to ensure deterministic integration with the VEX Generator.
+## 5. Deployment Options
+*   **Cloud (Claude Max):** Maximum reasoning capability for deep analysis.
+*   **On-Premise (Ollama/Qwen3):** Data sovereignty for OT networks with no internet connectivity.
