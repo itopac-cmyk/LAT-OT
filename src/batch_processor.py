@@ -60,17 +60,18 @@ class BatchProcessor:
             parser = CSAFParser(adv_json)
             vulns = parser.extract_vulnerabilities()
             
-            # 2. Triage Logic
-            engine = TriageEngine(vulns, assets)
-            prompt = engine.generate_ssvc_prompt()
+            # 2. Triage Logic (Multi-Agent Workflow)
+            from src.triage.multi_agent_engine import MultiAgentTriage
+            engine = MultiAgentTriage(vulns, assets)
+            prompt = engine.generate_multi_agent_prompt()
 
             # Check if there were any matches
-            if "### ASSETS POTENTIALLY AFFECTED:" not in prompt:
+            if "TRIAGE CASE:" not in prompt:
                 self.summary.append({"pair": pair_id, "status": "no_match", "matches": 0})
                 return
 
             # count matches
-            match_count = prompt.count("Asset ID:")
+            match_count = prompt.count("TRIAGE CASE:")
             
             # 3. LLM Analysis (Optional)
             results = None

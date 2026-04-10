@@ -1,7 +1,5 @@
-asset_id,name,cpe,firmware,location,purdue_level,safety_relevant,internet_exposed,criticality,iec62443_sl_target
-PLC-PROD-01,S7-1500 CPU 1511,cpe:2.3:h:siemens:simatic_s7-1500_cpu:-:*:*:*:*:*:*:*,v2.9.2,Cell 1,1,true,false,high,3
-PLC-PROD-02,S7-1200 CPU 1214C,cpe:2.3:h:siemens:simatic_s7-1200_cpu:-:*:*:*:*:*:*:*,v4.5.0,Cell 2,1,false,false,medium,2
-HMI-PROD-01,Comfort Panel TP1200,cpe:2.3:a:siemens:wincc:7.5:*:*:*:*:*:*:*,v16.0,Cell 1,2,false,false,medium,2
-SCADA-SRV-01,WinCC Professional Server,cpe:2.3:a:siemens:wincc_runtime_professional:16.0:*:*:*:*:*:*:*,v16.0,Control Room,3,false,true,critical,3
-ENG-WS-01,TIA Portal Workstation,cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:*:*,22H2,Engineering Room,3,false,false,high,2
-SWITCH-PROD-01,Scalance XC-200,cpe:2.3:h:siemens:scalance_xc-200:-:*:*:*:*:*:*:*,v4.2.0,Cell 1,2,false,false,high,3
+asset_id,name,cpe,firmware,purdue_level,safety_relevant,internet_exposed,criticality,iec62443_sl_target,compensatory_controls,network_neighbors
+PLC-PROD-01,S7-1500 CPU,cpe:2.3:h:siemens:simatic_s7-1500_cpu:-:*:*:*:*:*:*:*,v2.9.2,1,true,false,high,3,"Industrial Firewall, Read-only SD Card","HMI-PROD-01, IO-Node-04"
+HMI-PROD-02,WinCC Panel,cpe:2.3:a:siemens:wincc:7.5:*:*:*:*:*:*:*,v7.5 SP2,2,false,false,medium,2,"Endpoint Protection (EDR)","PLC-PROD-01, SCADA-SRV-01"
+SCADA-SRV-01,Main SCADA,cpe:2.3:a:siemens:wincc_runtime_professional:16.0:*:*:*:*:*:*:*,v16.0,3,false,true,critical,3,"Air-Gap via Data Diode","HMI-PROD-02, Historian-DB"
+EOF
