@@ -1,0 +1,5 @@
+asset_id,name,cpe,firmware,location,purdue_level,safety_relevant,internet_exposed,criticality,iec62443_sl_target
+PLC-PUMP-01,Phoenix Contact ILC 131,cpe:2.3:h:phoenix_contact:ilc_131_eth:-:*:*:*:*:*:*:*,v1.2.0,Pump Station 1,1,true,true,high,3
+PLC-PUMP-02,Phoenix Contact ILC 131,cpe:2.3:h:phoenix_contact:ilc_131_eth:-:*:*:*:*:*:*:*,v1.2.0,Pump Station 2,1,true,true,high,3
+HMI-LOCAL-01,Beijer X2 Control,cpe:2.3:h:beijer:x2_control:-:*:*:*:*:*:*:*,v2.0.0,Plant A,2,false,false,medium,2
+SCADA-WATER-01,VTScada Server,cpe:2.3:a:trihedral:vtscada:12.0:*:*:*:*:*:*:*,v12.0,Central,3,false,true,critical,3

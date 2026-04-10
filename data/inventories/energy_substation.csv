@@ -1,0 +1,6 @@
+asset_id,name,cpe,firmware,location,purdue_level,safety_relevant,internet_exposed,criticality,iec62443_sl_target
+IED-PROT-01,Schneider MiCOM P139,cpe:2.3:h:schneider-electric:micom_p139:-:*:*:*:*:*:*:*,v2.1.0,Bay 1,1,true,false,critical,4
+RTU-MAIN-01,Schneider Saitel DR,cpe:2.3:h:schneider-electric:saitel_dr:-:*:*:*:*:*:*:*,v5.1.0,Control Cabinet,2,false,true,critical,3
+HMI-SUB-01,Magelis GTU,cpe:2.3:a:schneider-electric:magelis_gtu:-:*:*:*:*:*:*:*,v3.1.0,Local Control,2,false,false,high,2
+SCADA-GRID-01,EcoStruxure Grid Server,cpe:2.3:a:schneider-electric:ecostruxure_grid_engineering:-:*:*:*:*:*:*:*,v1.4.0,Central Control,3,false,true,critical,4
+FIREWALL-EDGE-01,Fortinet FortiGate Rugged,cpe:2.3:h:fortinet:fortigate_rugged_60d:-:*:*:*:*:*:*:*,v6.2.0,Edge,3,false,true,critical,4
