@@ -1,35 +1,21 @@
 {
-  "timestamp": "2026-04-10T17:49:16.486911",
+  "timestamp": "2026-04-10T17:49:32.927381",
   "results": [
     {
-      "pair": "icsa-24-046-01.json_vs_manufacturing.csv",
-      "status": "error",
-      "error": "Extra data: line 1 column 4 (char 3)"
+      "pair": "ssa-285644.json_vs_manufacturing.csv",
+      "status": "success",
+      "matches": 1,
+      "llm_analyzed": false
     },
     {
-      "pair": "icsa-24-046-01.json_vs_water_treatment.csv",
-      "status": "error",
-      "error": "Extra data: line 1 column 4 (char 3)"
+      "pair": "ssa-285644.json_vs_water_treatment.csv",
+      "status": "no_match",
+      "matches": 0
     },
     {
-      "pair": "icsa-24-046-01.json_vs_energy_substation.csv",
-      "status": "error",
-      "error": "Extra data: line 1 column 4 (char 3)"
-    },
-    {
-      "pair": "icsa-24-051-01.json_vs_manufacturing.csv",
-      "status": "error",
-      "error": "Extra data: line 1 column 4 (char 3)"
-    },
-    {
-      "pair": "icsa-24-051-01.json_vs_water_treatment.csv",
-      "status": "error",
-      "error": "Extra data: line 1 column 4 (char 3)"
-    },
-    {
-      "pair": "icsa-24-051-01.json_vs_energy_substation.csv",
-      "status": "error",
-      "error": "Extra data: line 1 column 4 (char 3)"
+      "pair": "ssa-285644.json_vs_energy_substation.csv",
+      "status": "no_match",
+      "matches": 0
     }
   ]
 }
