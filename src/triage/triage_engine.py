@@ -126,4 +126,3 @@ if __name__ == "__main__":
     
     engine = TriageEngine(vulns, asset_data)
     print(engine.generate_ssvc_prompt())
-EOF
