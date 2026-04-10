@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.venv/
+venv/
+ENV/
+
+# Project specific
+data/raw/
+data/processed/
+.env
+.idea/
+.vscode/
+*.log
