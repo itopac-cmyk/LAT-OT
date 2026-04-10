@@ -49,9 +49,10 @@ class BatchProcessor:
         logger.info(f"Processing: {pair_id}")
 
         try:
-            # 1. Load & Parse
-            with open(adv_path, 'r') as f:
-                adv_json = json.load(f)
+            # 1. Load & Parse with BOM handling
+            with open(adv_path, 'r', encoding='utf-8-sig') as f:
+                adv_content = f.read().strip()
+                adv_json = json.loads(adv_content)
             
             loader = AssetLoader()
             assets = loader.load_from_csv(inv_path)

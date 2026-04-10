@@ -7,6 +7,8 @@ logger = logging.getLogger(__name__)
 
 class CSAFParser:
     def __init__(self, json_data: Dict):
+        # json_data is already a dict, but if we were loading from file, 
+        # we'd need to handle BOM. The BatchProcessor is where the file is read.
         self.data = json_data
         self.product_map = self._build_product_map()
 

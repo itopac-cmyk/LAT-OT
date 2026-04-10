@@ -6,53 +6,34 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def fetch_siemens_samples(limit=5):
-    """Fetches sample CSAF files from Siemens ProductCERT."""
-    # Siemens CSAF index
-    index_url = "https://cert-portal.siemens.com/productcert/csaf/index.txt"
-    base_url = "https://cert-portal.siemens.com/productcert/csaf/"
+def fetch_cisa_ics_samples(limit=10):
+    """Fetches real ICS-CERT CSAF advisories from CISA's official GitHub mirroring."""
+    # This is a reliable mirror of current CISA ICS-CERT advisories
+    base_repo_url = "https://raw.githubusercontent.com/cisagov/CSAF/main/advisories/cisa/"
     
-    try:
-        logger.info("Fetching Siemens CSAF index...")
-        response = requests.get(index_url)
-        response.raise_for_status()
-        
-        # Get individual file names from index
-        files = response.text.splitlines()[:limit]
-        
-        for filename in files:
-            if not filename.endswith('.json'): continue
-            
-            logger.info(f"Downloading Siemens advisory: {filename}")
-            file_url = f"{base_url}{filename}"
-            res = requests.get(file_url)
-            
-            with open(f"data/raw/siemens/{filename}", 'wb') as f:
-                f.write(res.content)
-                
-    except Exception as e:
-        logger.error(f"Error fetching Siemens advisories: {e}")
-
-def fetch_cisa_ics_samples(limit=5):
-    """Fetches sample ICS advisories from CISA (via GitHub or API)."""
-    # Using a common repository or direct URLs for demonstration
-    # CISA often mirrors these in their CSAF aggregator.
-    # For now, we'll use a direct link to a few known ICS advisories.
-    sample_urls = [
-        "https://raw.githubusercontent.com/cisagov/CSAF/main/advisories/cisa/icsa-24-046-01.json",
-        "https://raw.githubusercontent.com/cisagov/CSAF/main/advisories/cisa/icsa-24-051-01.json"
+    # We'll use a few recent known advisory IDs for testing
+    # In a production version, we would parse the CISA provider-metadata.json
+    sample_ids = [
+        "icsa-24-046-01", "icsa-24-051-01", "icsa-24-072-01", 
+        "icsa-24-074-01", "icsa-24-074-02", "icsa-24-074-03"
     ]
     
-    for url in sample_urls:
-        filename = url.split('/')[-1]
+    for adv_id in sample_ids[:limit]:
+        filename = f"{adv_id}.json"
+        url = f"{base_repo_url}{filename}"
+        
         logger.info(f"Downloading CISA ICS advisory: {filename}")
         try:
-            res = requests.get(url)
-            with open(f"data/raw/cisa/{filename}", 'wb') as f:
+            res = requests.get(url, timeout=10)
+            res.raise_for_status()
+            
+            # Save to cisa folder
+            dest_path = f"data/raw/cisa/{filename}"
+            with open(dest_path, 'wb') as f:
                 f.write(res.content)
+            logger.info(f"Saved to {dest_path}")
         except Exception as e:
-            logger.error(f"Error downloading {url}: {e}")
+            logger.error(f"Error downloading {adv_id}: {e}")
 
 if __name__ == "__main__":
-    fetch_siemens_samples(limit=3)
-    fetch_cisa_ics_samples()
+    fetch_cisa_ics_samples(limit=5)
