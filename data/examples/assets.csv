@@ -1,0 +1,4 @@
+asset_id,name,cpe,firmware,location,is_exposed_to_internet,criticality
+PLC-PROD-01,S7-1500 Production Line 1,cpe:2.3:h:siemens:simatic_s7-1500_cpu:-:*:*:*:*:*:*:*,v2.9.2,"Plant A, Hall 1",false,high
+HMI-PROD-02,WinCC Panel Line 1,cpe:2.3:a:siemens:wincc:7.5:*:*:*:*:*:*:*,v7.5 SP2,"Plant A, Hall 1",false,medium
+SCADA-SRV-01,Main SCADA Server,cpe:2.3:a:siemens:wincc_runtime_professional:16.0:*:*:*:*:*:*:*,v16.0,"Control Room",true,critical

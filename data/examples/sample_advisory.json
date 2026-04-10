@@ -1,0 +1,43 @@
+{
+  "document": {
+    "category": "csaf_security_advisory",
+    "title": "Example OT Advisory for PLC-100",
+    "tracking": {
+      "id": "LAT-OT-2026-001",
+      "status": "final"
+    }
+  },
+  "product_tree": {
+    "full_product_names": [
+      {
+        "name": "Siemens SIMATIC S7-1500 CPU",
+        "product_id": "PRID-123",
+        "product_identification_helper": {
+          "cpe": "cpe:2.3:h:siemens:simatic_s7-1500_cpu:-:*:*:*:*:*:*:*"
+        }
+      }
+    ]
+  },
+  "vulnerabilities": [
+    {
+      "cve": "CVE-2026-9999",
+      "title": "Critical Buffer Overflow in Web Server",
+      "notes": [
+        {
+          "category": "description",
+          "text": "A remote attacker could cause a Denial of Service or execute arbitrary code by sending a crafted HTTP request to the integrated web server."
+        }
+      ],
+      "product_status": {
+        "known_affected": ["PRID-123"]
+      },
+      "remediations": [
+        {
+          "category": "vendor_fix",
+          "details": "Update to firmware version v2.9.4 or higher.",
+          "product_ids": ["PRID-123"]
+        }
+      ]
+    }
+  ]
+}

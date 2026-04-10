@@ -1,0 +1,20 @@
+[
+  {
+    "asset_id": "PLC-PROD-01",
+    "name": "S7-1500 Production Line 1",
+    "cpe": "cpe:2.3:h:siemens:simatic_s7-1500_cpu:-:*:*:*:*:*:*:*",
+    "firmware": "v2.9.2",
+    "location": "Plant A, Hall 1",
+    "is_exposed_to_internet": false,
+    "criticality": "high"
+  },
+  {
+    "asset_id": "HMI-PROD-02",
+    "name": "WinCC Panel Line 1",
+    "cpe": "cpe:2.3:a:siemens:wincc:7.5:*:*:*:*:*:*:*",
+    "firmware": "v7.5 SP2",
+    "location": "Plant A, Hall 1",
+    "is_exposed_to_internet": false,
+    "criticality": "medium"
+  }
+]
