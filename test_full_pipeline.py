@@ -2,6 +2,7 @@ import subprocess
 import os
 import json
 import logging
+import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("E2E-TEST")
@@ -32,10 +33,12 @@ def test_lat_ot():
 
     # 4. Check Web UI startability
     logger.info("Step 2: Testing Web UI (Smoke Test)...")
+    # Determine the correct python interpreter (use the one from venv if active)
+    python_exe = sys.executable
     try:
         import flask
         # We start it briefly and kill it
-        proc = subprocess.Popen(["python3", "src/web_ui/app.py"], env={**os.environ, "PYTHONPATH": "."})
+        proc = subprocess.Popen([python_exe, "src/web_ui/app.py"], env={**os.environ, "PYTHONPATH": "."})
         import time
         time.sleep(3)
         if proc.poll() is None:
@@ -45,7 +48,8 @@ def test_lat_ot():
             logger.error("Web UI failed to start.")
             return False
     except ImportError:
-        logger.warning("Flask not installed. Skipping Web UI smoke test. Logic check passed though.")
+        logger.warning("Flask not installed in this environment. Skipping Web UI smoke test.")
+
 
 
     logger.info("LAT-OT E2E TEST PASSED.")
