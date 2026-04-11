@@ -1,120 +1,98 @@
 import os
 import json
 import logging
-import csv
 from datetime import datetime
 from src.parser.csaf_parser import CSAFParser
 from src.utils.asset_loader import AssetLoader
-from src.triage.triage_engine import TriageEngine
+from src.triage.multi_agent_engine import MultiAgentTriage
 from src.triage.vex_generator import VEXGenerator
 from src.llm.local_llm import LocalLLM
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class BatchProcessor:
     def __init__(self, raw_dir="data/raw", inventory_dir="data/inventories", output_dir="reports/batch"):
-        self.raw_dir = raw_dir
-        self.inventory_dir = inventory_dir
-        self.output_dir = output_dir
-        os.makedirs(output_dir, exist_ok=True)
+        # Absolute paths for safety
+        self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.raw_dir = os.path.join(self.base_dir, raw_dir)
+        self.inventory_dir = os.path.join(self.base_dir, inventory_dir)
+        self.output_dir = os.path.join(self.base_dir, output_dir)
+        os.makedirs(self.output_dir, exist_ok=True)
         self.summary = []
 
     def run_all(self, use_llm=False):
-        """Iterates through all advisories and all inventories."""
-        advisories = self._get_files(self.raw_dir, ".json")
-        inventories = self._get_files(self.inventory_dir, ".csv")
+        """Robust batch runner."""
+        advisories = [os.path.join(r, f) for r, d, files in os.walk(self.raw_dir) for f in files if f.endswith(".json")]
+        inventories = [os.path.join(r, f) for r, d, files in os.walk(self.inventory_dir) for f in files if f.endswith(".csv")]
 
-        logger.info(f"Starting batch run: {len(advisories)} advisories vs {len(inventories)} inventories.")
+        if not advisories or not inventories:
+            logger.error("Missing input data (advisories or inventories).")
+            return
 
-        for adv_path in advisories:
-            for inv_path in inventories:
-                self._process_pair(adv_path, inv_path, use_llm)
+        logger.info(f"Batch Start: {len(advisories)} advisories, {len(inventories)} inventories.")
+
+        for adv in advisories:
+            for inv in inventories:
+                self._process_pair(adv, inv, use_llm)
 
         self._save_summary()
 
-    def _get_files(self, directory, extension):
-        file_list = []
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.endswith(extension):
-                    file_list.append(os.path.join(root, file))
-        return file_list
-
     def _process_pair(self, adv_path, inv_path, use_llm):
-        adv_name = os.path.basename(adv_path)
-        inv_name = os.path.basename(inv_path)
-        pair_id = f"{adv_name}_vs_{inv_name}"
-        
-        logger.info(f"Processing: {pair_id}")
+        pair_id = f"{os.path.basename(adv_path)}_vs_{os.path.basename(inv_path)}"
+        logger.info(f"Processing {pair_id}")
 
         try:
-            # 1. Load & Parse with BOM handling
             with open(adv_path, 'r', encoding='utf-8-sig') as f:
-                adv_content = f.read().strip()
-                adv_json = json.loads(adv_content)
+                adv_json = json.load(f)
             
-            loader = AssetLoader()
-            assets = loader.load_from_csv(inv_path)
-            
+            assets = AssetLoader.load_from_csv(inv_path)
+            if not assets: return
+
             parser = CSAFParser(adv_json)
             vulns = parser.extract_vulnerabilities()
-            
-            # 2. Triage Logic (Multi-Agent Workflow)
-            from src.triage.multi_agent_engine import MultiAgentTriage
+            if not vulns: return
+
             engine = MultiAgentTriage(vulns, assets)
             prompt = engine.generate_multi_agent_prompt()
 
-            # Check if there were any matches
             if "TRIAGE CASE:" not in prompt:
-                self.summary.append({"pair": pair_id, "status": "no_match", "matches": 0})
+                self.summary.append({"pair": pair_id, "status": "no_relevant_match"})
                 return
 
-            # count matches
-            match_count = prompt.count("TRIAGE CASE:")
-            
-            # 3. LLM Analysis (Optional)
-            results = None
             if use_llm:
                 llm = LocalLLM()
                 response = llm.analyze(prompt)
+                
+                # Check for LLM errors
+                if "LLM_UNREACHABLE" in response:
+                    logger.error(f"LLM unreachable for {pair_id}")
+                    self.summary.append({"pair": pair_id, "status": "llm_error"})
+                    return
+
                 try:
                     results = json.loads(response)
-                    # Generate VEX
-                    doc_id = adv_json.get("document", {}).get("tracking", {}).get("id", adv_name)
+                    doc_id = adv_json.get("document", {}).get("tracking", {}).get("id", "ADV")
                     vex_gen = VEXGenerator(doc_id)
                     vex_report = vex_gen.generate_vex_report(vulns[0]['cve'], results)
                     
                     with open(os.path.join(self.output_dir, f"vex_{pair_id}.json"), 'w') as f:
                         json.dump(vex_report, f, indent=2)
+                    self.summary.append({"pair": pair_id, "status": "success"})
                 except Exception as e:
-                    logger.error(f"LLM parsing failed for {pair_id}: {e}")
-
-            # 4. Save Prompt
-            with open(os.path.join(self.output_dir, f"prompt_{pair_id}.txt"), 'w') as f:
-                f.write(prompt)
-
-            self.summary.append({
-                "pair": pair_id,
-                "status": "success",
-                "matches": match_count,
-                "llm_analyzed": use_llm and results is not None
-            })
+                    logger.error(f"JSON Parse error for LLM output: {e}")
+                    self.summary.append({"pair": pair_id, "status": "parse_error"})
+            else:
+                self.summary.append({"pair": pair_id, "status": "prompt_generated_only"})
 
         except Exception as e:
-            logger.error(f"Failed to process {pair_id}: {e}")
-            self.summary.append({"pair": pair_id, "status": "error", "error": str(e)})
+            logger.error(f"Critical failure processing {pair_id}: {e}")
+            self.summary.append({"pair": pair_id, "status": "critical_failure", "error": str(e)})
 
     def _save_summary(self):
-        summary_path = os.path.join(self.output_dir, "batch_summary.json")
-        with open(summary_path, 'w') as f:
-            json.dump({
-                "timestamp": datetime.now().isoformat(),
-                "results": self.summary
-            }, f, indent=2)
-        logger.info(f"Batch summary saved to: {summary_path}")
+        with open(os.path.join(self.output_dir, "batch_summary.json"), 'w') as f:
+            json.dump({"timestamp": datetime.now().isoformat(), "results": self.summary}, f, indent=2)
 
 if __name__ == "__main__":
     processor = BatchProcessor()
-    # By default, we only generate prompts to avoid waiting for LLM in dev
     processor.run_all(use_llm=False)

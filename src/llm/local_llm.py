@@ -1,6 +1,7 @@
 import requests
 import json
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -9,33 +10,24 @@ class LocalLLM:
         self.model = model
         self.base_url = f"{base_url}/api/generate"
 
-    def analyze(self, prompt: str) -> str:
-        """Sends a prompt to the local Ollama instance and returns the response."""
+    def analyze(self, prompt: str, retries=2) -> str:
+        """Sends a prompt to the local Ollama instance with retry logic."""
         payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "format": "json"  # Ensure Ollama knows we expect structured JSON
+            "format": "json"
         }
 
-        try:
-            logger.info(f"Sending prompt to local LLM ({self.model})...")
-            response = requests.post(self.base_url, json=payload, timeout=120)
-            response.raise_for_status()
-            
-            result = response.json()
-            return result.get("response", "")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error communicating with Ollama: {e}")
-            return json.dumps({
-                "error": "Local LLM unreachable. Ensure Ollama is running.",
-                "details": str(e)
-            })
-
-if __name__ == "__main__":
-    # Quick connectivity test
-    llm = LocalLLM()
-    print("Testing local LLM connection...")
-    # This will likely fail if Ollama is not running, but serves as a placeholder
-    test_res = llm.analyze("Return a JSON object with 'status': 'ready'")
-    print(test_res)
+        for attempt in range(retries + 1):
+            try:
+                logger.info(f"Sending prompt to LLM (Attempt {attempt+1}/{retries+1})...")
+                response = requests.post(self.base_url, json=payload, timeout=180) # Large timeout for deep reasoning
+                response.raise_for_status()
+                return response.json().get("response", "")
+            except Exception as e:
+                logger.warning(f"LLM Connection failed: {e}")
+                if attempt < retries:
+                    time.sleep(2)
+                else:
+                    return json.dumps({"error": "LLM_UNREACHABLE", "details": str(e)})

@@ -1,35 +1,21 @@
 {
-  "timestamp": "2026-04-10T22:09:23.841299",
+  "timestamp": "2026-04-11T04:54:03.706545",
   "results": [
     {
-      "pair": "ssa-285644.json_vs_manufacturing.csv",
-      "status": "no_match",
-      "matches": 0
-    },
-    {
       "pair": "ssa-285644.json_vs_water_treatment.csv",
-      "status": "no_match",
-      "matches": 0
+      "status": "prompt_generated_only"
     },
     {
       "pair": "ssa-285644.json_vs_energy_substation.csv",
-      "status": "no_match",
-      "matches": 0
-    },
-    {
-      "pair": "se-vulnerability-001.json_vs_manufacturing.csv",
-      "status": "no_match",
-      "matches": 0
+      "status": "prompt_generated_only"
     },
     {
       "pair": "se-vulnerability-001.json_vs_water_treatment.csv",
-      "status": "no_match",
-      "matches": 0
+      "status": "prompt_generated_only"
     },
     {
       "pair": "se-vulnerability-001.json_vs_energy_substation.csv",
-      "status": "no_match",
-      "matches": 0
+      "status": "prompt_generated_only"
     }
   ]
 }
